@@ -1,9 +1,26 @@
-const ajax = new XMLHttpRequest();
+// type alias
+type Store = {
+  currentPage : number;
+  feeds : NewsFeed[];
+}
+
+type NewsFeed = {
+  id : number;
+  comments_count : number;
+  url : string;
+  user : string;
+  time_ago : string;
+  points : number;
+  title : string;
+  read? : boolean;
+}
+
+const ajax : XMLHttpRequest = new XMLHttpRequest();
 const NEWS_URL = 'https://api.hnpwa.com/v0/news/1.json';
 const CONTENT_URL = 'https://api.hnpwa.com/v0/item/@id.json';
-const container = document.getElementById('root');
+const container : HTMLElement | null = document.getElementById('root');
 
-const store = {
+const store : Store = {
     currentPage : 1,
     feeds : []
 };
@@ -15,6 +32,14 @@ const getData = (url) => {
     return JSON.parse(ajax.response);
 }
 
+const updateView = (template : string) => {
+  if (container) { // type guard
+    container.innerHTML = template;
+  } else {
+    console.log("ERROR");
+  }
+}
+
 const makeFirstFeedForReadState = (feeds) => {
     // 처음 피드 데이터를 받아오면서 read속성을 false값으로 초기화해서 부여하기 위한 함수
     for (let i = 0 ; i < feeds.length ; i++) {
@@ -24,7 +49,7 @@ const makeFirstFeedForReadState = (feeds) => {
 }
 
 const displayNewsFeed = () => {
-    let newsFeeds = store.feeds;
+    let newsFeeds : NewsFeed[] = store.feeds;
 
     if (newsFeeds.length == 0) {
         newsFeeds = store.feeds = makeFirstFeedForReadState(getData(NEWS_URL));
@@ -82,7 +107,7 @@ const displayNewsFeed = () => {
     template = template.replace('@prev_page', store.currentPage - 1 > 1 ? store.currentPage - 1 : 1);
     template = template.replace('@next_page', store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1);
 
-    container.innerHTML = template;
+    updateView(template);
 }
 
 const displayNewsDetail = () => {
@@ -152,7 +177,7 @@ const displayNewsDetail = () => {
 
     template = template.replace('@comments', makeComment(newsContent.comments, 0));
 
-    container.innerHTML = template;
+    updateView(template);
 }
 
 const router = () => {
