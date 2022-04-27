@@ -127,12 +127,22 @@ var container = document.getElementById('root');
 var store = {
   currentPage: 1,
   feeds: []
-};
+}; // 제네릭을 이용하면 A,B,C,D 유형의 인풋값에 대해서 A유형엔 A유형으로 반환 할 수 있게 해준다,
 
 var getData = function getData(url) {
   ajax.open('GET', url, false);
-  ajax.send();
+  ajax.send(); // 경우에 따라서 반환하는 값이 NewsFeed일때도, NewsDetail일때도 있는 상황
+
   return JSON.parse(ajax.response);
+};
+
+var updateView = function updateView(template) {
+  if (container) {
+    // type guard
+    container.innerHTML = template;
+  } else {
+    console.log("ERROR");
+  }
 };
 
 var makeFirstFeedForReadState = function makeFirstFeedForReadState(feeds) {
@@ -142,6 +152,21 @@ var makeFirstFeedForReadState = function makeFirstFeedForReadState(feeds) {
   }
 
   return feeds;
+};
+
+var makeComment = function makeComment(comments) {
+  var commentString = [];
+
+  for (var i = 0; i < comments.length; i++) {
+    var comment = comments[i];
+    commentString.push("\n      <div style=\"padding-left: ".concat(comment.level * 40, "px;\" class=\"mt-4\">\n        <div class=\"text-gray-400\">\n          <i class=\"fa fa-sort-down mr-2\"></i>\n          <strong>").concat(comment.user, "</strong> ").concat(comment.time_ago, "\n        </div>\n        <p class=\"text-gray-700\">").concat(comment.content, "</p>\n      </div>      \n    "));
+
+    if (comment.comments.length > 0) {
+      commentString.push(makeComment(comment.comments));
+    }
+  }
+
+  return commentString.join('');
 };
 
 var displayNewsFeed = function displayNewsFeed() {
@@ -160,9 +185,9 @@ var displayNewsFeed = function displayNewsFeed() {
   }
 
   template = template.replace('@news_list', newsList.join(''));
-  template = template.replace('@prev_page', store.currentPage - 1 > 1 ? store.currentPage - 1 : 1);
-  template = template.replace('@next_page', store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1);
-  container.innerHTML = template;
+  template = template.replace('@prev_page', String(store.currentPage - 1 > 1 ? store.currentPage - 1 : 1));
+  template = template.replace('@next_page', String(store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1));
+  updateView(template);
 };
 
 var displayNewsDetail = function displayNewsDetail() {
@@ -180,23 +205,8 @@ var displayNewsDetail = function displayNewsDetail() {
 
   var newsContent = getData(CONTENT_URL.replace('@id', id));
   var template = "\n    <div class=\"bg-gray-600 min-h-screen pb-8\">\n      <div class=\"bg-white text-xl\">\n        <div class=\"mx-auto px-4\">\n          <div class=\"flex justify-between items-center py-6\">\n            <div class=\"flex justify-start\">\n              <h1 class=\"font-extrabold\">Hacker News</h1>\n            </div>\n            <div class=\"items-center justify-end\">\n              <a href=\"#/page/".concat(store.currentPage, "\" class=\"text-gray-500\">\n                <i class=\"fa fa-times\"></i>\n              </a>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <div class=\"h-full border rounded-xl bg-white m-6 p-4 \">\n        <h2>").concat(newsContent.title, "</h2>\n        <div class=\"text-gray-400 h-20\">\n          ").concat(newsContent.content, "\n        </div>\n\n        @comments\n\n      </div>\n    </div>\n    ");
-
-  var makeComment = function makeComment(comments, called) {
-    var commentString = [];
-
-    for (var i = 0; i < comments.length; i++) {
-      commentString.push("\n            <div style=\"padding-left: ".concat(called * 40, "px;\" class=\"mt-4\">\n              <div class=\"text-gray-400\">\n                <i class=\"fa fa-sort-down mr-2\"></i>\n                <strong>").concat(comments[i].user, "</strong> ").concat(comments[i].time_ago, "\n              </div>\n              <p class=\"text-gray-700\">").concat(comments[i].content, "</p>\n            </div>      \n          "));
-
-      if (comments[i].comments.length > 0) {
-        commentString.push(makeComment(comments[i].comments, called + 1));
-      }
-    }
-
-    return commentString.join('');
-  };
-
-  template = template.replace('@comments', makeComment(newsContent.comments, 0));
-  container.innerHTML = template;
+  template = template.replace('@comments', makeComment(newsContent.comments));
+  updateView(template);
 };
 
 var router = function router() {
@@ -243,7 +253,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "51792" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53901" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
