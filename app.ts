@@ -1,32 +1,41 @@
+// Typing 하는 방법 두 가지 : Type Alias , Interface
+// Union 타입으로 선언을 해야하면 Interface는 쓰지 못함. Type Alias 사용해야한다.
+
 // type alias
-type Store = {
+// type Store = {
+//   currentPage : number;
+//   feeds : NewsFeed[];
+// }
+
+// readonly를 사용해서 더 제약을 거는 이런 방식을 선호해야 함.
+// Interface
+interface Store {
   currentPage : number;
   feeds : NewsFeed[];
 }
 
-
-type News = {
-  id : number;
-  time_ago : string;
-  title : string;
-  url : string;
-  user : string;
-  content : string;
+interface News {
+  readonly id : number;
+  readonly time_ago : string;
+  readonly title : string;
+  readonly url : string;
+  readonly user : string;
+  readonly content : string;
 }
 
-type NewsFeed = News & {
-  comments_count : number;
-  points : number;
+interface NewsFeed extends News { // News &를 인터섹션이라고 부른다 (앰퍼센트)
+  readonly comments_count : number;
+  readonly points : number;
   read? : boolean;
 }
 
-type NewsDetail = News & {
-  comments : NewsDetailComment[];
+interface NewsDetail extends News {
+  readonly comments : NewsDetailComment[];
 }
 
-type NewsDetailComment = News & {
-  comments : NewsDetailComment[];
-  level : number;
+interface NewsDetailComment extends News {
+  readonly comments : NewsDetailComment[];
+  readonly level : number;
 }
 
 const ajax : XMLHttpRequest = new XMLHttpRequest();
@@ -44,7 +53,7 @@ const getData = <AjaxResponseType>(url : string) : AjaxResponseType => {
     ajax.open('GET', url, false);
     ajax.send();
 
-    // 경우에 따라서 반환하는 값이 NewsFeed일때도, NewsDetail일때도 있는 상황
+    // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
     return JSON.parse(ajax.response);
 }
 
