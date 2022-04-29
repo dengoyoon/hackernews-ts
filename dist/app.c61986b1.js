@@ -118,7 +118,8 @@ parcelRequire = (function (modules, cache, entry, globalName) {
 
   return newRequire;
 })({"app.ts":[function(require,module,exports) {
-"use strict";
+"use strict"; // Typing 하는 방법 두 가지 : Type Alias , Interface
+// Union 타입으로 선언을 해야하면 Interface는 쓰지 못함. Type Alias 사용해야한다.
 
 var ajax = new XMLHttpRequest();
 var NEWS_URL = 'https://api.hnpwa.com/v0/news/1.json';
@@ -127,11 +128,99 @@ var container = document.getElementById('root');
 var store = {
   currentPage: 1,
   feeds: []
-}; // 제네릭을 이용하면 A,B,C,D 유형의 인풋값에 대해서 A유형엔 A유형으로 반환 할 수 있게 해준다,
+}; // 이런식으로 class화 시키는것이 현재 기능으로는 비효율적이긴 하지만 앞으로 커지는 기능에 대한 대비로 이렇게 하는 것이 좋다
+// class Api {
+//   url : string;
+//   ajax : XMLHttpRequest;
+//   constructor(url : string) {
+//     this.url = url;
+//     this.ajax = new XMLHttpRequest();
+//   }
+//   protected getRequest<AjaxResponseType>() : AjaxResponseType {
+//     this.ajax.open('GET', this.url, false);
+//     this.ajax.send();
+//     // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
+//     return JSON.parse(this.ajax.response);
+//   }
+// }
+
+function applyApiMixins(targetClass, baseClasses) {
+  // 일단 이해하긴 어렵고 그냥 역할을 이용하면 좋을듯, 다중 상속을 지원하기 위함 (합성시키기)
+  baseClasses.forEach(function (baseClass) {
+    Object.getOwnPropertyNames(baseClass.prototype).forEach(function (name) {
+      var descriptor = Object.getOwnPropertyDescriptor(baseClass.prototype, name);
+
+      if (descriptor) {
+        Object.defineProperty(targetClass.prototype, name, descriptor);
+      }
+    });
+  });
+} // 믹스인 방법
+// 이 방법으로 코드의 상속 구현이 유연해질 수 있다.
+// extends는 다중상속을 지원하지 않음
+
+
+var Api =
+/** @class */
+function () {
+  function Api() {}
+
+  Api.prototype.getRequest = function (url) {
+    var ajax = new XMLHttpRequest();
+    ajax.open('GET', url, false);
+    ajax.send(); // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
+
+    return JSON.parse(ajax.response);
+  };
+
+  return Api;
+}(); // class NewsFeedApi extends Api {
+//   getData() : NewsFeed[] {
+//     return this.getRequest<NewsFeed[]>();
+//   }
+// }
+// 믹스인 방법
+
+
+var NewsFeedApi =
+/** @class */
+function () {
+  function NewsFeedApi() {}
+
+  NewsFeedApi.prototype.getData = function () {
+    return this.getRequest(NEWS_URL);
+  };
+
+  return NewsFeedApi;
+}(); // class NewsDetailApi extends Api {
+//   getData() : NewsDetail {
+//     return this.getRequest<NewsDetail>();
+//   }
+// }
+// 믹스인 방법
+
+
+var NewsDetailApi =
+/** @class */
+function () {
+  function NewsDetailApi() {}
+
+  NewsDetailApi.prototype.getData = function (id) {
+    return this.getRequest(CONTENT_URL.replace('@id', id));
+  };
+
+  return NewsDetailApi;
+}();
+
+; // TypeScript 컴파일러에게 이 두가지가 합성될것임을 알려주는 코드
+
+;
+applyApiMixins(NewsFeedApi, [Api]);
+applyApiMixins(NewsDetailApi, [Api]); // 제네릭을 이용하면 A,B,C,D 유형의 인풋값에 대해서 A유형엔 A유형으로 반환 할 수 있게 해준다,
 
 var getData = function getData(url) {
   ajax.open('GET', url, false);
-  ajax.send(); // 경우에 따라서 반환하는 값이 NewsFeed일때도, NewsDetail일때도 있는 상황
+  ajax.send(); // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
 
   return JSON.parse(ajax.response);
 };
@@ -170,10 +259,11 @@ var makeComment = function makeComment(comments) {
 };
 
 var displayNewsFeed = function displayNewsFeed() {
+  var api = new NewsFeedApi();
   var newsFeeds = store.feeds;
 
   if (newsFeeds.length == 0) {
-    newsFeeds = store.feeds = makeFirstFeedForReadState(getData(NEWS_URL));
+    newsFeeds = store.feeds = makeFirstFeedForReadState(api.getData());
   }
 
   var template = "\n    <div class=\"bg-gray-600 min-h-screen\">\n      <div class=\"bg-white text-xl\">\n        <div class=\"mx-auto px-4\">\n          <div class=\"flex justify-between items-center py-6\">\n            <div class=\"flex justify-start\">\n              <h1 class=\"font-extrabold\">Hacker News</h1>\n            </div>\n            <div class=\"items-center justify-end\">\n              <a href=\"#/page/@prev_page\" class=\"text-gray-900\">\n                Previous\n              </a>\n              <a href=\"#/page/@next_page\" class=\"text-gray-900 ml-4\">\n                Next\n              </a>\n            </div>\n          </div> \n        </div>\n      </div>\n      <div class=\"p-4 text-2xl text-gray-700\">\n        @news_list        \n      </div>\n    </div>\n  ";
@@ -195,6 +285,7 @@ var displayNewsDetail = function displayNewsDetail() {
   // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
   // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
   var id = location.hash.substring(9);
+  var api = new NewsDetailApi();
 
   for (var i = 0; i < store.feeds.length; i++) {
     if (store.feeds[i].id == Number(id)) {
@@ -203,7 +294,7 @@ var displayNewsDetail = function displayNewsDetail() {
     }
   }
 
-  var newsContent = getData(CONTENT_URL.replace('@id', id));
+  var newsContent = api.getData(id);
   var template = "\n    <div class=\"bg-gray-600 min-h-screen pb-8\">\n      <div class=\"bg-white text-xl\">\n        <div class=\"mx-auto px-4\">\n          <div class=\"flex justify-between items-center py-6\">\n            <div class=\"flex justify-start\">\n              <h1 class=\"font-extrabold\">Hacker News</h1>\n            </div>\n            <div class=\"items-center justify-end\">\n              <a href=\"#/page/".concat(store.currentPage, "\" class=\"text-gray-500\">\n                <i class=\"fa fa-times\"></i>\n              </a>\n            </div>\n          </div>\n        </div>\n      </div>\n\n      <div class=\"h-full border rounded-xl bg-white m-6 p-4 \">\n        <h2>").concat(newsContent.title, "</h2>\n        <div class=\"text-gray-400 h-20\">\n          ").concat(newsContent.content, "\n        </div>\n\n        @comments\n\n      </div>\n    </div>\n    ");
   template = template.replace('@comments', makeComment(newsContent.comments));
   updateView(template);
@@ -253,7 +344,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53901" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53977" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

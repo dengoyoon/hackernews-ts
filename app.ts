@@ -7,8 +7,11 @@
 //   feeds : NewsFeed[];
 // }
 
-// readonly를 사용해서 더 제약을 거는 이런 방식을 선호해야 함.
+// readonly를 사용해서 더 제약을 거는 이런 방식을 선호해야 함. (실수 방지, 안전)
 // Interface
+
+// 상속을 하는 두 가지 방법 : 클래스, 믹스인
+
 interface Store {
   currentPage : number;
   feeds : NewsFeed[];
@@ -47,6 +50,85 @@ const store : Store = {
     currentPage : 1,
     feeds : []
 };
+
+// 이런식으로 class화 시키는것이 현재 기능으로는 비효율적이긴 하지만 앞으로 커지는 기능에 대한 대비로 이렇게 하는 것이 좋다
+// class Api {
+//   url : string;
+//   ajax : XMLHttpRequest;
+
+//   constructor(url : string) {
+//     this.url = url;
+//     this.ajax = new XMLHttpRequest();
+//   }
+
+//   protected getRequest<AjaxResponseType>() : AjaxResponseType {
+//     this.ajax.open('GET', this.url, false);
+//     this.ajax.send();
+
+//     // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
+//     return JSON.parse(this.ajax.response);
+//   }
+// }
+
+function applyApiMixins(targetClass : any, baseClasses : any[]) {
+  // 일단 이해하긴 어렵고 그냥 역할을 이용하면 좋을듯, 다중 상속을 지원하기 위함 (합성시키기)
+  baseClasses.forEach(baseClass => {
+    Object.getOwnPropertyNames(baseClass.prototype).forEach(name => {
+      const descriptor = Object.getOwnPropertyDescriptor(baseClass.prototype, name);
+
+      if (descriptor) {
+        Object.defineProperty(targetClass.prototype, name, descriptor);
+      }
+    });
+  });
+}
+
+// 믹스인 방법
+// 이 방법으로 코드의 상속 구현이 유연해질 수 있다.
+// extends는 다중상속을 지원하지 않음
+
+class Api {
+  getRequest<AjaxResponseType>(url : string) : AjaxResponseType {
+    const ajax = new XMLHttpRequest();
+    ajax.open('GET', url, false);
+    ajax.send();
+
+    // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
+    return JSON.parse(ajax.response);
+  }
+}
+
+// class NewsFeedApi extends Api {
+//   getData() : NewsFeed[] {
+//     return this.getRequest<NewsFeed[]>();
+//   }
+// }
+
+// 믹스인 방법
+class NewsFeedApi {
+  getData() : NewsFeed[] {
+    return this.getRequest<NewsFeed[]>(NEWS_URL);
+  }
+}
+
+// class NewsDetailApi extends Api {
+//   getData() : NewsDetail {
+//     return this.getRequest<NewsDetail>();
+//   }
+// }
+
+// 믹스인 방법
+class NewsDetailApi {
+  getData(id : string) : NewsDetail {
+    return this.getRequest<NewsDetail>(CONTENT_URL.replace('@id', id));
+  }
+}
+
+// 믹스인
+interface NewsFeedApi extends Api {}; // TypeScript 컴파일러에게 이 두가지가 합성될것임을 알려주는 코드
+interface NewsDetailApi extends Api {};
+applyApiMixins(NewsFeedApi, [Api]);
+applyApiMixins(NewsDetailApi, [Api]);
 
 // 제네릭을 이용하면 A,B,C,D 유형의 인풋값에 대해서 A유형엔 A유형으로 반환 할 수 있게 해준다,
 const getData = <AjaxResponseType>(url : string) : AjaxResponseType => {
@@ -97,10 +179,11 @@ const makeComment = (comments : NewsDetailComment[]) : string => {
 }
 
 const displayNewsFeed = () : void => {
+    const api = new NewsFeedApi();
     let newsFeeds : NewsFeed[] = store.feeds;
 
     if (newsFeeds.length == 0) {
-        newsFeeds = store.feeds = makeFirstFeedForReadState(getData<NewsFeed[]>(NEWS_URL));
+        newsFeeds = store.feeds = makeFirstFeedForReadState(api.getData());
     }
 
     let template = `
@@ -163,6 +246,7 @@ const displayNewsDetail = () : void => {
     // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
     // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
     const id = location.hash.substring(9);
+    const api = new NewsDetailApi();
 
     for (let i = 0; i < store.feeds.length ; i++) {
         if (store.feeds[i].id == Number(id)) {
@@ -171,7 +255,7 @@ const displayNewsDetail = () : void => {
         }
     }
 
-    const newsContent = getData<NewsDetail>(CONTENT_URL.replace('@id', id));
+    const newsContent = api.getData(id);
     let template = `
     <div class="bg-gray-600 min-h-screen pb-8">
       <div class="bg-white text-xl">
