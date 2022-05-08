@@ -3,6 +3,11 @@ interface Store {
   feeds : NewsFeed[];
 }
 
+interface RouteInfo {
+  path : string;
+  page : View;
+}
+
 interface News {
   readonly id : number;
   readonly time_ago : string;
@@ -81,7 +86,10 @@ applyApiMixins(NewsFeedApi, [Api]);
 applyApiMixins(NewsDetailApi, [Api]);
 
 class View {
+  // 원본 템플릿 : 이걸 안해놓으면 예를들어 템플릿 안에 @title이 있고 얘가 replace되면
+  // @title이 아니라 그 값으로 대체 되기 때문에 한번 replace되고 나서 부터는 @title을 이용해서 replace 못하는 문제 발생
   template : string;
+  renderTemplate : string; // 템플릿의 id가 replace될때 사용할 일시적인 템플릿
   container : HTMLElement;
   htmlList : string[];
 
@@ -92,12 +100,14 @@ class View {
     }
     this.container = containerElement;
     this.template = template;
+    this.renderTemplate = template;
     this.htmlList = [];
   }
 
   updateView = () : void => {
     if (container) { // type guard
-      container.innerHTML = this.template;
+      container.innerHTML = this.renderTemplate;
+      this.renderTemplate = this.template; // 값이 replace되어 버린 @id들을 다시 원본 템플릿으로 살려놓기 위함
     } else {
       console.log("최상위 컨테이너가 없어 UI를 진행하지 못합니다.");
     }
@@ -108,11 +118,45 @@ class View {
   }
 
   getHtml = () : string => {
+    const snapshot = this.htmlList.join('')
+    this.clearHtmlList();
     return this.htmlList.join('')
   }
 
+  clearHtmlList = () : void => {
+    this.htmlList = [];
+  }
+
   setTemplateData = (key : string, value : string) : void => {
-    this.template = this.template.replace(`@${key}`, value);
+    this.renderTemplate = this.renderTemplate.replace(`@${key}`, value);
+  }
+}
+
+class Router {
+  // 목적 : hash가 바뀌었을때 해당하는 페이지를 보여준다.
+  routeTable : RouteInfo[];
+  defaultRoute : RouteInfo | null;
+
+  constructor() {
+    const routePath = location.hash;
+    window.addEventListener('hashchange', router);
+    this.routeTable = [];
+    this.defaultRoute = null;
+
+  }
+
+  setDefaultPage = (page : View) : void => {
+    this.defaultRoute = {
+      path : '', // #만 있으면 그냥 빈 문자열 ''로 나온다.
+      page : page
+    }
+  }
+
+  addRoutePath = (path : string, page : View) : void => {
+    this.routeTable.push({
+      path : path, // 둘이 같으니까 그냥 path라고만 적어도 됨
+      page : page,
+    })
   }
 }
 
@@ -121,7 +165,7 @@ class NewsFeedView extends View{
   api : NewsFeedApi;
   feeds : NewsFeed[];
 
-  constructor(containerId: string) {
+  constructor(containerId: string) { // container는 즉 root를 의미한다.
     let template = `
       <div class="bg-gray-600 min-h-screen">
         <div class="bg-white text-xl">
@@ -210,7 +254,7 @@ class NewsDetailView extends View {
               <h1 class="font-extrabold">Hacker News</h1>
             </div>
             <div class="items-center justify-end">
-              <a href="#/page/${store.currentPage}" class="text-gray-500">
+              <a href="#/page/@current_page" class="text-gray-500">
                 <i class="fa fa-times"></i>
               </a>
             </div>
@@ -219,9 +263,9 @@ class NewsDetailView extends View {
       </div>
 
       <div class="h-full border rounded-xl bg-white m-6 p-4 ">
-        <h2>${newsContent.title}</h2>
+        <h2>@news_content_title</h2>
         <div class="text-gray-400 h-20">
-          ${newsContent.content}
+          @news_content_content
         </div>
 
         @comments
@@ -248,6 +292,11 @@ class NewsDetailView extends View {
       }
     }
     this.setTemplateData("comments", this.makeComment(newsContent.comments));
+
+    this.setTemplateData('current_page', String(store.currentPage));
+    this.setTemplateData('news_content_title', newsContent.title);
+    this.setTemplateData('news_content_content', newsContent.content);
+
     this.updateView();
   }
 
@@ -282,69 +331,10 @@ const getData = <AjaxResponseType>(url : string) : AjaxResponseType => {
     return JSON.parse(ajax.response);
 }
 
-const displayNewsDetail = () : void => {
-    // // 앵커태그의 해시가 변경되었을때 이벤트가 발생한다.
-    // // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
-    // // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
-    // const id = location.hash.substring(9);
-    // const api = new NewsDetailApi();
+const router : Router = new Router();
+const newsFeedView = new NewsFeedView('root');
+const newsDetailView = new NewsDetailView('root');
 
-    // for (let i = 0; i < store.feeds.length ; i++) {
-    //     if (store.feeds[i].id == Number(id)) {
-    //         store.feeds[i].read = true;
-    //         break;
-    //     }
-    // }
-
-    // const newsContent = api.getData(id);
-    // let template = `
-    // <div class="bg-gray-600 min-h-screen pb-8">
-    //   <div class="bg-white text-xl">
-    //     <div class="mx-auto px-4">
-    //       <div class="flex justify-between items-center py-6">
-    //         <div class="flex justify-start">
-    //           <h1 class="font-extrabold">Hacker News</h1>
-    //         </div>
-    //         <div class="items-center justify-end">
-    //           <a href="#/page/${store.currentPage}" class="text-gray-500">
-    //             <i class="fa fa-times"></i>
-    //           </a>
-    //         </div>
-    //       </div>
-    //     </div>
-    //   </div>
-
-    //   <div class="h-full border rounded-xl bg-white m-6 p-4 ">
-    //     <h2>${newsContent.title}</h2>
-    //     <div class="text-gray-400 h-20">
-    //       ${newsContent.content}
-    //     </div>
-
-    //     @comments
-
-    //   </div>
-    // </div>
-    // `;
-
-    // template = template.replace('@comments', makeComment(newsContent.comments));
-
-    // updateView(template);
-}
-
-const router = () : void => {
-    const routePath = location.hash;
-    if (routePath == '') {
-        // #만 있으면 그냥 빈 문자열 ''로 나온다.
-        displayNewsFeed();
-    } else if (routePath.indexOf('/page') >= 0) {
-        store.currentPage = Number(routePath.substring(7));
-        displayNewsFeed();
-    } else {
-        displayNewsDetail();
-    }
-}
-
-window.addEventListener('hashchange', router);
-
-router();
-
+router.setDefaultPage(newsFeedView);
+router.addRoutePath('/page/', newsFeedView);
+router.addRoutePath('/show/', newsDetailView);
