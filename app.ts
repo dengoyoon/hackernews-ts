@@ -81,89 +81,126 @@ applyApiMixins(NewsFeedApi, [Api]);
 applyApiMixins(NewsDetailApi, [Api]);
 
 class View {
-  constructor() {
+  template : string;
+  container : HTMLElement;
+  htmlList : string[];
 
+  constructor(containerId : string, template : string) {
+    const containerElement = document.getElementById(containerId);
+    if (!containerElement) {
+      throw "최상위 컨테이너가 없어 UI를 진행하지 못합니다.";
+    }
+    this.container = containerElement;
+    this.template = template;
+    this.htmlList = [];
+  }
+
+  updateView = () : void => {
+    if (container) { // type guard
+      container.innerHTML = this.template;
+    } else {
+      console.log("최상위 컨테이너가 없어 UI를 진행하지 못합니다.");
+    }
+  }
+
+  addHtml = (htmlString : string) : void => {
+    this.htmlList.push(htmlString);
+  }
+
+  getHtml = () : string => {
+    return this.htmlList.join('')
+  }
+
+  setTemplateData = (key : string, value : string) : void => {
+    this.template = this.template.replace(`@${key}`, value);
   }
 }
 
 class NewsFeedView extends View{
   // 클래스로 뷰를 만드는 이유 : 필요한 것을 저장했다가 재사용해서 쓸 수 있기 때문
-  constructor() {
-    const api = new NewsFeedApi();
-    let newsFeeds : NewsFeed[] = store.feeds;
+  api : NewsFeedApi;
+  feeds : NewsFeed[];
 
-    if (newsFeeds.length == 0) {
-        newsFeeds = store.feeds = makeFirstFeedForReadState(api.getData());
-    }
-
+  constructor(containerId: string) {
     let template = `
-    <div class="bg-gray-600 min-h-screen">
-      <div class="bg-white text-xl">
-        <div class="mx-auto px-4">
-          <div class="flex justify-between items-center py-6">
-            <div class="flex justify-start">
-              <h1 class="font-extrabold">Hacker News</h1>
-            </div>
-            <div class="items-center justify-end">
-              <a href="#/page/@prev_page" class="text-gray-900">
-                Previous
-              </a>
-              <a href="#/page/@next_page" class="text-gray-900 ml-4">
-                Next
-              </a>
-            </div>
-          </div> 
+      <div class="bg-gray-600 min-h-screen">
+        <div class="bg-white text-xl">
+          <div class="mx-auto px-4">
+            <div class="flex justify-between items-center py-6">
+              <div class="flex justify-start">
+                <h1 class="font-extrabold">Hacker News</h1>
+              </div>
+              <div class="items-center justify-end">
+                <a href="#/page/@prev_page" class="text-gray-900">
+                  Previous
+                </a>
+                <a href="#/page/@next_page" class="text-gray-900 ml-4">
+                  Next
+                </a>
+              </div>
+            </div> 
+          </div>
+        </div>
+        <div class="p-4 text-2xl text-gray-700">
+          @news_list        
         </div>
       </div>
-      <div class="p-4 text-2xl text-gray-700">
-        @news_list        
-      </div>
-    </div>
-  `;
+    `;
+    super(containerId, template);
+    this.api = new NewsFeedApi();
+    this.feeds = store.feeds;
+
+    if (this.feeds.length == 0) {
+        this.feeds = store.feeds = this.api.getData();
+        this.makeFirstFeedForReadState();
+    }
+
+    
   }
 
   render() : void {
-    const newsList : string[] = [];
-    const maxPageNumber = newsFeeds.length / 10;
+    const maxPageNumber = this.feeds.length / 10;
     for (let i = (store.currentPage - 1) * 10 ; i < store.currentPage * 10 ; i++) {
-      newsList.push(`
-          <div class="p-6 ${newsFeeds[i].read ? 'bg-green-600' : 'bg-white'} mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100">
+      // 구조 분해 할당 방법
+      const { id, title, comments_count, user, points, time_ago, read } = this.feeds[i];
+      this.addHtml(`
+          <div class="p-6 ${read ? 'bg-green-600' : 'bg-white'} mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100">
           <div class="flex">
               <div class="flex-auto">
-              <a href="#/detail/${newsFeeds[i].id}">${newsFeeds[i].title}</a>  
+              <a href="#/detail/${id}">${title}</a>  
               </div>
               <div class="text-center text-sm">
-              <div class="w-10 text-white bg-green-300 rounded-lg px-0 py-2">${newsFeeds[i].comments_count}</div>
+              <div class="w-10 text-white bg-green-300 rounded-lg px-0 py-2">${comments_count}</div>
               </div>
           </div>
           <div class="flex mt-3">
               <div class="grid grid-cols-3 text-sm text-gray-500">
-              <div><i class="fas fa-user mr-1"></i>${newsFeeds[i].user}</div>
-              <div><i class="fas fa-heart mr-1"></i>${newsFeeds[i].points}</div>
-              <div><i class="far fa-clock mr-1"></i>${newsFeeds[i].time_ago}</div>
+              <div><i class="fas fa-user mr-1"></i>${user}</div>
+              <div><i class="fas fa-heart mr-1"></i>${points}</div>
+              <div><i class="far fa-clock mr-1"></i>${time_ago}</div>
               </div>  
           </div>
           </div>    
       `);
     }
-    template = template.replace('@news_list', newsList.join(''));
-    template = template.replace('@prev_page', String(store.currentPage - 1 > 1 ? store.currentPage - 1 : 1));
-    template = template.replace('@next_page', String(store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1));
+    this.setTemplateData("news_list", this.getHtml());
+    this.setTemplateData("prev_page", String(store.currentPage - 1 > 1 ? store.currentPage - 1 : 1));
+    this.setTemplateData("next_page", String(store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1));
 
-    updateView(template);
+    this.updateView();
   }
 
-  makeFirstFeedForReadState = (feeds : NewsFeed[]) : NewsFeed[] => {
+  makeFirstFeedForReadState = () : void => {
     // 처음 피드 데이터를 받아오면서 read속성을 false값으로 초기화해서 부여하기 위한 함수
-    for (let i = 0 ; i < feeds.length ; i++) {
-        feeds[i].read = false;
+    // 기존에는 input값과 output값이 있었는데 이제는 클래스의 내부 메서드가 되었으니까 값들을 그대로 참조할 수 있어서 지워줌
+    for (let i = 0 ; i < this.feeds.length ; i++) {
+        this.feeds[i].read = false;
     }
-    return feeds;
   }
 }
 
 class NewsDetailView extends View {
-  constructor() {
+  constructor(containerId : string) {
     let template = `
     <div class="bg-gray-600 min-h-screen pb-8">
       <div class="bg-white text-xl">
@@ -192,6 +229,7 @@ class NewsDetailView extends View {
       </div>
     </div>
     `;
+    super(containerId, template);
   }
 
   render() {
@@ -209,16 +247,14 @@ class NewsDetailView extends View {
           break;
       }
     }
-    template = template.replace('@comments', makeComment(newsContent.comments));
-    updateView(template);
+    this.setTemplateData("comments", this.makeComment(newsContent.comments));
+    this.updateView();
   }
 
-  makeComment = (comments : NewsDetailComment[]) : string => {
-    const commentString = [];
-  
+  makeComment = (comments : NewsDetailComment[]) : string => {  
     for (let i = 0; i < comments.length ; i++) {
         const comment : NewsDetailComment = comments[i];
-        commentString.push(`
+        this.addHtml(`
         <div style="padding-left: ${comment.level * 40}px;" class="mt-4">
           <div class="text-gray-400">
             <i class="fa fa-sort-down mr-2"></i>
@@ -229,11 +265,11 @@ class NewsDetailView extends View {
       `);
   
       if (comment.comments.length > 0) {
-          commentString.push(makeComment(comment.comments));
+          this.addHtml(this.makeComment(comment.comments));
       }
     }
   
-    return commentString.join('');
+    return this.getHtml();
   }
 }
 
@@ -244,14 +280,6 @@ const getData = <AjaxResponseType>(url : string) : AjaxResponseType => {
 
     // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
     return JSON.parse(ajax.response);
-}
-
-const updateView = (template : string) : void => {
-  if (container) { // type guard
-    container.innerHTML = template;
-  } else {
-    console.log("ERROR");
-  }
 }
 
 const displayNewsDetail = () : void => {
