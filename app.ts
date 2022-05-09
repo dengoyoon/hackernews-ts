@@ -55,7 +55,7 @@ function applyApiMixins(targetClass : any, baseClasses : any[]) {
 }
 
 class Api {
-  getRequest<AjaxResponseType>(url : string) : AjaxResponseType {
+  protected getRequest<AjaxResponseType>(url : string) : AjaxResponseType {
     const ajax = new XMLHttpRequest();
     ajax.open('GET', url, false);
     ajax.send();
@@ -85,13 +85,13 @@ interface NewsDetailApi extends Api {};
 applyApiMixins(NewsFeedApi, [Api]);
 applyApiMixins(NewsDetailApi, [Api]);
 
-class View {
+abstract class View {
   // 원본 템플릿 : 이걸 안해놓으면 예를들어 템플릿 안에 @title이 있고 얘가 replace되면
   // @title이 아니라 그 값으로 대체 되기 때문에 한번 replace되고 나서 부터는 @title을 이용해서 replace 못하는 문제 발생
-  template : string;
-  renderTemplate : string; // 템플릿의 id가 replace될때 사용할 일시적인 템플릿
-  container : HTMLElement;
-  htmlList : string[];
+  private template : string;
+  private renderTemplate : string; // 템플릿의 id가 replace될때 사용할 일시적인 템플릿
+  private container : HTMLElement;
+  private htmlList : string[];
 
   constructor(containerId : string, template : string) {
     const containerElement = document.getElementById(containerId);
@@ -104,7 +104,7 @@ class View {
     this.htmlList = [];
   }
 
-  updateView = () : void => {
+  protected updateView = () : void => {
     if (container) { // type guard
       container.innerHTML = this.renderTemplate;
       this.renderTemplate = this.template; // 값이 replace되어 버린 @id들을 다시 원본 템플릿으로 살려놓기 위함
@@ -113,41 +113,46 @@ class View {
     }
   }
 
-  addHtml = (htmlString : string) : void => {
+  protected addHtml = (htmlString : string) : void => {
     this.htmlList.push(htmlString);
   }
 
-  getHtml = () : string => {
+  protected getHtml = () : string => {
     const snapshot = this.htmlList.join('')
     this.clearHtmlList();
-    return this.htmlList.join('')
+    return snapshot;
   }
 
-  clearHtmlList = () : void => {
+  private clearHtmlList = () : void => {
     this.htmlList = [];
   }
 
-  setTemplateData = (key : string, value : string) : void => {
+  protected setTemplateData = (key : string, value : string) : void => {
     this.renderTemplate = this.renderTemplate.replace(`@${key}`, value);
   }
+
+  // abstract : 자식 클래스들이 무조건 render를 override하게 만드는 키워드
+  // 그리고 이 키워드를 쓰려면 View 클래스 자체에도 abstract 키워드가 붙어야 한다.
+  abstract render() : void;
 }
 
 class Router {
-  // 목적 : hash가 바뀌었을때 해당하는 페이지를 보여준다.
-  routeTable : RouteInfo[];
-  defaultRoute : RouteInfo | null;
+  // Router class 목적 : hash가 바뀌었을때 해당하는 페이지를 보여준다.
+  private routeTable : RouteInfo[]; // 최초 시작시에 path와 page(view) 저장됨.
+  private defaultRoute : RouteInfo | null; // 최초 시작시에 NewsFeedView 저장됨.
 
   constructor() {
     const routePath = location.hash;
-    window.addEventListener('hashchange', router);
+    // 해시의 변경을 감지하고 변경되면 함수 실행.
+    // window.addEventListener에서의 this context는 Router 인스턴스가 아니고 함수를 실행하는 주체인 이벤트가 됨 
+    window.addEventListener('hashchange', this.route.bind(this));
     this.routeTable = [];
     this.defaultRoute = null;
-
   }
 
   setDefaultPage = (page : View) : void => {
     this.defaultRoute = {
-      path : '', // #만 있으면 그냥 빈 문자열 ''로 나온다.
+      path : '',
       page : page
     }
   }
@@ -158,12 +163,28 @@ class Router {
       page : page,
     })
   }
+
+  route = () : void => {
+    const routePath = location.hash;
+     // #만 있으면 그냥 빈 문자열 ''로 나온다.
+    if(routePath == '' && this.defaultRoute) {
+      // 디폴트 페이지인 NewsFeedView로 이동.
+      this.defaultRoute.page.render();
+    }
+
+    for (const routeInfo of this.routeTable) {
+      if (routePath.indexOf(routeInfo.path) >= 0) {
+        routeInfo.page.render();
+        break;
+      }
+    }
+  }
 }
 
 class NewsFeedView extends View{
   // 클래스로 뷰를 만드는 이유 : 필요한 것을 저장했다가 재사용해서 쓸 수 있기 때문
-  api : NewsFeedApi;
-  feeds : NewsFeed[];
+  private api : NewsFeedApi;
+  private feeds : NewsFeed[];
 
   constructor(containerId: string) { // container는 즉 root를 의미한다.
     let template = `
@@ -195,14 +216,14 @@ class NewsFeedView extends View{
     this.feeds = store.feeds;
 
     if (this.feeds.length == 0) {
-        this.feeds = store.feeds = this.api.getData();
-        this.makeFirstFeedForReadState();
-    }
-
-    
+      this.feeds = store.feeds = this.api.getData();
+      this.makeFirstFeedForReadState();
+    }    
   }
 
-  render() : void {
+  // override render
+  render = () : void => {
+    store.currentPage = Number(location.hash.substring(7) || 1) // default 처리
     const maxPageNumber = this.feeds.length / 10;
     for (let i = (store.currentPage - 1) * 10 ; i < store.currentPage * 10 ; i++) {
       // 구조 분해 할당 방법
@@ -228,13 +249,14 @@ class NewsFeedView extends View{
       `);
     }
     this.setTemplateData("news_list", this.getHtml());
+    // 템플릿의 앵커 태그 안의 값들이 변경되면서 해당 버튼을 클릭했을때 hash 변경이 감지될 것.
     this.setTemplateData("prev_page", String(store.currentPage - 1 > 1 ? store.currentPage - 1 : 1));
     this.setTemplateData("next_page", String(store.currentPage + 1 > maxPageNumber ? maxPageNumber : store.currentPage + 1));
 
     this.updateView();
   }
 
-  makeFirstFeedForReadState = () : void => {
+  private makeFirstFeedForReadState = () : void => {
     // 처음 피드 데이터를 받아오면서 read속성을 false값으로 초기화해서 부여하기 위한 함수
     // 기존에는 input값과 output값이 있었는데 이제는 클래스의 내부 메서드가 되었으니까 값들을 그대로 참조할 수 있어서 지워줌
     for (let i = 0 ; i < this.feeds.length ; i++) {
@@ -276,7 +298,8 @@ class NewsDetailView extends View {
     super(containerId, template);
   }
 
-  render() {
+  // override render
+  render = () => {
     // 해당 부분은 API가 호출 될때 결정되는 것들 이니까 render함수로 들어오게 됨
     // 앵커태그의 해시가 변경되었을때 이벤트가 발생한다.
     // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
@@ -300,7 +323,7 @@ class NewsDetailView extends View {
     this.updateView();
   }
 
-  makeComment = (comments : NewsDetailComment[]) : string => {  
+  private makeComment = (comments : NewsDetailComment[]) : string => {  
     for (let i = 0; i < comments.length ; i++) {
         const comment : NewsDetailComment = comments[i];
         this.addHtml(`
@@ -322,19 +345,12 @@ class NewsDetailView extends View {
   }
 }
 
-// 제네릭을 이용하면 A,B,C,D 유형의 인풋값에 대해서 A유형엔 A유형으로 반환 할 수 있게 해준다,
-const getData = <AjaxResponseType>(url : string) : AjaxResponseType => {
-    ajax.open('GET', url, false);
-    ajax.send();
-
-    // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
-    return JSON.parse(ajax.response);
-}
-
 const router : Router = new Router();
 const newsFeedView = new NewsFeedView('root');
 const newsDetailView = new NewsDetailView('root');
 
 router.setDefaultPage(newsFeedView);
 router.addRoutePath('/page/', newsFeedView);
-router.addRoutePath('/show/', newsDetailView);
+router.addRoutePath('/detail/', newsDetailView);
+
+router.route();
