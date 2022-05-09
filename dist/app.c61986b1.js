@@ -234,57 +234,6 @@ function () {
 applyApiMixins(NewsFeedApi, [Api]);
 applyApiMixins(NewsDetailApi, [Api]);
 
-var View =
-/** @class */
-function () {
-  function View(containerId, template) {
-    var _this = this;
-
-    this.updateView = function () {
-      if (container) {
-        // type guard
-        container.innerHTML = _this.renderTemplate;
-        _this.renderTemplate = _this.template; // 값이 replace되어 버린 @id들을 다시 원본 템플릿으로 살려놓기 위함
-      } else {
-        console.log("최상위 컨테이너가 없어 UI를 진행하지 못합니다.");
-      }
-    };
-
-    this.addHtml = function (htmlString) {
-      _this.htmlList.push(htmlString);
-    };
-
-    this.getHtml = function () {
-      var snapshot = _this.htmlList.join('');
-
-      _this.clearHtmlList();
-
-      return snapshot;
-    };
-
-    this.clearHtmlList = function () {
-      _this.htmlList = [];
-    };
-
-    this.setTemplateData = function (key, value) {
-      _this.renderTemplate = _this.renderTemplate.replace("@".concat(key), value);
-    };
-
-    var containerElement = document.getElementById(containerId);
-
-    if (!containerElement) {
-      throw "최상위 컨테이너가 없어 UI를 진행하지 못합니다.";
-    }
-
-    this.container = containerElement;
-    this.template = template;
-    this.renderTemplate = template;
-    this.htmlList = [];
-  }
-
-  return View;
-}();
-
 var Router =
 /** @class */
 function () {
@@ -346,6 +295,57 @@ function () {
   }
 
   return Router;
+}();
+
+var View =
+/** @class */
+function () {
+  function View(containerId, template) {
+    var _this = this;
+
+    this.updateView = function () {
+      if (_this.container) {
+        // type guard
+        _this.container.innerHTML = _this.renderTemplate;
+        _this.renderTemplate = _this.template; // 값이 replace되어 버린 @id들을 다시 원본 템플릿으로 살려놓기 위함
+      } else {
+        console.log("최상위 컨테이너가 없어 UI를 진행하지 못합니다.");
+      }
+    };
+
+    this.addHtml = function (htmlString) {
+      _this.htmlList.push(htmlString);
+    };
+
+    this.getHtml = function () {
+      var snapshot = _this.htmlList.join('');
+
+      _this.clearHtmlList();
+
+      return snapshot;
+    };
+
+    this.clearHtmlList = function () {
+      _this.htmlList = [];
+    };
+
+    this.setTemplateData = function (key, value) {
+      _this.renderTemplate = _this.renderTemplate.replace("@".concat(key), value);
+    };
+
+    var containerElement = document.getElementById(containerId);
+
+    if (!containerElement) {
+      throw "최상위 컨테이너가 없어 UI를 진행하지 못합니다.";
+    }
+
+    this.container = containerElement;
+    this.template = template;
+    this.renderTemplate = template;
+    this.htmlList = [];
+  }
+
+  return View;
 }();
 
 var NewsFeedView =
@@ -504,7 +504,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52598" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57419" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
