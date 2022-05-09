@@ -431,7 +431,7 @@ var NewsDetailView =
 function (_super) {
   __extends(NewsDetailView, _super);
 
-  function NewsDetailView(containerId) {
+  function NewsDetailView(containerId, store) {
     var _this = _super.call(this, containerId, template) || this; // override render
 
 
@@ -444,16 +444,11 @@ function (_super) {
       var api = new api_1.NewsDetailApi();
       var newsContent = api.getData(id); // api를 호출할때 id값이 필요해서 NewsFeedView와는 다르게 render에서 실행함.
 
-      for (var i = 0; i < window.store.feeds.length; i++) {
-        if (window.store.feeds[i].id == Number(id)) {
-          window.store.feeds[i].read = true;
-          break;
-        }
-      }
+      _this.store.makeRead(Number(id));
 
       _this.setTemplateData("comments", _this.makeComment(newsContent.comments));
 
-      _this.setTemplateData('current_page', String(window.store.currentPage));
+      _this.setTemplateData('current_page', String(_this.store.currentPage));
 
       _this.setTemplateData('news_content_title', newsContent.title);
 
@@ -476,6 +471,7 @@ function (_super) {
       return _this.getHtml();
     };
 
+    _this.store = store;
     return _this;
   }
 
@@ -533,7 +529,7 @@ var NewsFeedView =
 function (_super) {
   __extends(NewsFeedView, _super);
 
-  function NewsFeedView(containerId) {
+  function NewsFeedView(containerId, store) {
     var _this = this;
 
     var template = "\n        <div class=\"bg-gray-600 min-h-screen\">\n          <div class=\"bg-white text-xl\">\n            <div class=\"mx-auto px-4\">\n              <div class=\"flex justify-between items-center py-6\">\n                <div class=\"flex justify-start\">\n                  <h1 class=\"font-extrabold\">Hacker News</h1>\n                </div>\n                <div class=\"items-center justify-end\">\n                  <a href=\"#/page/@prev_page\" class=\"text-gray-900\">\n                    Previous\n                  </a>\n                  <a href=\"#/page/@next_page\" class=\"text-gray-900 ml-4\">\n                    Next\n                  </a>\n                </div>\n              </div> \n            </div>\n          </div>\n          <div class=\"p-4 text-2xl text-gray-700\">\n            @news_list        \n          </div>\n        </div>\n      ";
@@ -541,13 +537,11 @@ function (_super) {
     // override render
 
     _this.render = function () {
-      window.store.currentPage = Number(location.hash.substring(7) || 1); // default 처리
+      _this.store.currentPage = Number(location.hash.substring(7) || 1); // default 처리
 
-      var maxPageNumber = _this.feeds.length / 10;
-
-      for (var i = (window.store.currentPage - 1) * 10; i < window.store.currentPage * 10; i++) {
+      for (var i = (_this.store.currentPage - 1) * 10; i < _this.store.currentPage * 10; i++) {
         // 구조 분해 할당 방법
-        var _a = _this.feeds[i],
+        var _a = _this.store.getFeed(i),
             id = _a.id,
             title = _a.title,
             comments_count = _a.comments_count,
@@ -562,28 +556,18 @@ function (_super) {
       _this.setTemplateData("news_list", _this.getHtml()); // 템플릿의 앵커 태그 안의 값들이 변경되면서 해당 버튼을 클릭했을때 hash 변경이 감지될 것.
 
 
-      _this.setTemplateData("prev_page", String(window.store.currentPage - 1 > 1 ? window.store.currentPage - 1 : 1));
+      _this.setTemplateData("prev_page", String(_this.store.prevPage));
 
-      _this.setTemplateData("next_page", String(window.store.currentPage + 1 > maxPageNumber ? maxPageNumber : window.store.currentPage + 1));
+      _this.setTemplateData("next_page", String(_this.store.nextPage));
 
       _this.updateView();
     };
 
-    _this.makeFirstFeedForReadState = function () {
-      // 처음 피드 데이터를 받아오면서 read속성을 false값으로 초기화해서 부여하기 위한 함수
-      // 기존에는 input값과 output값이 있었는데 이제는 클래스의 내부 메서드가 되었으니까 값들을 그대로 참조할 수 있어서 지워줌
-      for (var i = 0; i < _this.feeds.length; i++) {
-        _this.feeds[i].read = false;
-      }
-    };
-
+    _this.store = store;
     _this.api = new api_1.NewsFeedApi();
-    _this.feeds = window.store.feeds;
 
-    if (_this.feeds.length == 0) {
-      _this.feeds = window.store.feeds = _this.api.getData();
-
-      _this.makeFirstFeedForReadState();
+    if (!_this.store.hasFeeds) {
+      _this.store.setFeeds(_this.api.getData());
     }
 
     return _this;
@@ -624,7 +608,111 @@ Object.defineProperty(exports, "NewsFeedView", {
     return __importDefault(news_feed_view_1).default;
   }
 });
-},{"./news-detail-view":"src/page/news-detail-view.ts","./news-feed-view":"src/page/news-feed-view.ts"}],"src/app.ts":[function(require,module,exports) {
+},{"./news-detail-view":"src/page/news-detail-view.ts","./news-feed-view":"src/page/news-feed-view.ts"}],"src/store.ts":[function(require,module,exports) {
+"use strict";
+
+var __assign = this && this.__assign || function () {
+  __assign = Object.assign || function (t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+      s = arguments[i];
+
+      for (var p in s) {
+        if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+      }
+    }
+
+    return t;
+  };
+
+  return __assign.apply(this, arguments);
+};
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var Store =
+/** @class */
+function () {
+  function Store() {
+    var _this = this;
+
+    this.getAllFeeds = function () {
+      return _this.feeds;
+    };
+
+    this.getFeed = function (position) {
+      return _this.feeds[position];
+    };
+
+    this.setFeeds = function (feeds) {
+      _this.feeds = feeds.map(function (feed) {
+        return __assign(__assign({}, feed), {
+          read: false
+        });
+      });
+    };
+
+    this.makeRead = function (id) {
+      var feed = _this.feeds.find(function (feed) {
+        return feed.id == id;
+      });
+
+      if (feed) {
+        feed.read = true;
+      }
+    };
+
+    this.feeds = [];
+    this._currentPage = 1;
+  }
+
+  Object.defineProperty(Store.prototype, "currentPage", {
+    // getCurrentPage와 같은 함수를 만들어서 간단한 클래스 정보를 가져오는 것을 하기에 좀 애매하니까
+    // getter / setter 라는 문법이 있다.
+    get: function get() {
+      return this._currentPage;
+    },
+    set: function set(page) {
+      if (page <= 0) return;
+      this._currentPage = page;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(Store.prototype, "nextPage", {
+    get: function get() {
+      return this._currentPage + 1;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(Store.prototype, "prevPage", {
+    get: function get() {
+      return this._currentPage - 1 > 1 ? this._currentPage - 1 : 1;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(Store.prototype, "numberOfFeeds", {
+    get: function get() {
+      return this.feeds.length;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  Object.defineProperty(Store.prototype, "hasFeeds", {
+    get: function get() {
+      return this.feeds.length > 0;
+    },
+    enumerable: false,
+    configurable: true
+  });
+  return Store;
+}();
+
+exports.default = Store;
+},{}],"src/app.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -641,19 +729,28 @@ var router_1 = __importDefault(require("./core/router"));
 
 var page_1 = require("./page");
 
-var store = {
-  currentPage: 1,
-  feeds: []
-};
-window.store = store;
+var store_1 = __importDefault(require("./store")); // 가능하면 이렇게 전역에서 사용할 수 있게 하는 요소는 만들지 않는게 좋음
+// const store : Store = {
+//   currentPage : 1,
+//   feeds : []
+// };
+// declare global {
+//   interface Window {
+//     store : Store;
+//   }
+// }
+// window.store = store
+
+
+var store = new store_1.default();
 var router = new router_1.default();
-var newsFeedView = new page_1.NewsFeedView('root');
-var newsDetailView = new page_1.NewsDetailView('root');
+var newsFeedView = new page_1.NewsFeedView('root', store);
+var newsDetailView = new page_1.NewsDetailView('root', store);
 router.setDefaultPage(newsFeedView);
 router.addRoutePath('/page/', newsFeedView);
 router.addRoutePath('/detail/', newsDetailView);
 router.route();
-},{"./core/router":"src/core/router.ts","./page":"src/page/index.ts"}],"../../../.config/yarn/global/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"./core/router":"src/core/router.ts","./page":"src/page/index.ts","./store":"src/store.ts"}],"../../../.config/yarn/global/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -681,7 +778,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57419" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59290" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

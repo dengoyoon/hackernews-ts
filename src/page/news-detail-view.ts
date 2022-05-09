@@ -1,6 +1,6 @@
 import View from "../core/view";
 import { NewsDetailApi } from "../core/api";
-import { NewsDetailComment } from "../types";
+import { NewsDetailComment, NewsStore } from "../types";
 
 const template = `
     <div class="bg-gray-600 min-h-screen pb-8">
@@ -30,8 +30,11 @@ const template = `
     `;
 
 export default class NewsDetailView extends View {
-    constructor(containerId : string) {
+    private store : NewsStore;
+
+    constructor(containerId : string, store : NewsStore) {
       super(containerId, template);
+      this.store = store;
     }
   
     // override render
@@ -44,15 +47,10 @@ export default class NewsDetailView extends View {
       const api = new NewsDetailApi();
       const newsContent = api.getData(id); // api를 호출할때 id값이 필요해서 NewsFeedView와는 다르게 render에서 실행함.
   
-      for (let i = 0; i < window.store.feeds.length ; i++) {
-        if (window.store.feeds[i].id == Number(id)) {
-            window.store.feeds[i].read = true;
-            break;
-        }
-      }
+      this.store.makeRead(Number(id));
       this.setTemplateData("comments", this.makeComment(newsContent.comments));
   
-      this.setTemplateData('current_page', String(window.store.currentPage));
+      this.setTemplateData('current_page', String(this.store.currentPage));
       this.setTemplateData('news_content_title', newsContent.title);
       this.setTemplateData('news_content_content', newsContent.content);
   
