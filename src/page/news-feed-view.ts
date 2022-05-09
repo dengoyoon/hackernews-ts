@@ -1,6 +1,7 @@
 import View from "../core/view";
 import { NewsFeedApi } from "../core/api";
 import { NewsFeed, NewsStore } from "../types";
+import { NEWS_URL } from "../config";
 
 export default class NewsFeedView extends View{
     // 클래스로 뷰를 만드는 이유 : 필요한 것을 저장했다가 재사용해서 쓸 수 있기 때문
@@ -35,16 +36,16 @@ export default class NewsFeedView extends View{
       super(containerId, template); // 상속을 받으면 상위 클래스의 생성자를 실행시켜주어야 함.
 
       this.store = store;
-      this.api = new NewsFeedApi();
-  
-      if (!this.store.hasFeeds) {
-        this.store.setFeeds(this.api.getData());
-      }    
+      this.api = new NewsFeedApi(NEWS_URL);  
     }
   
     // override render
-    render = () : void => {
+    render = async () : Promise<void> => {
       this.store.currentPage = Number(location.hash.substring(7) || 1); // default 처리
+
+      if (!this.store.hasFeeds) {
+        this.store.setFeeds(await this.api.getData()); 
+      }  
 
       for (let i = (this.store.currentPage - 1) * 10 ; i < this.store.currentPage * 10 ; i++) {
         // 구조 분해 할당 방법
@@ -76,4 +77,5 @@ export default class NewsFeedView extends View{
   
       this.updateView();
     }
+
   }

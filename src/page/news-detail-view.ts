@@ -1,6 +1,7 @@
 import View from "../core/view";
 import { NewsDetailApi } from "../core/api";
-import { NewsDetailComment, NewsStore } from "../types";
+import { NewsDetail, NewsDetailComment, NewsStore } from "../types";
+import { CONTENT_URL } from "../config";
 
 const template = `
     <div class="bg-gray-600 min-h-screen pb-8">
@@ -38,23 +39,25 @@ export default class NewsDetailView extends View {
     }
   
     // override render
-    render = () => {
-      // 해당 부분은 API가 호출 될때 결정되는 것들 이니까 render함수로 들어오게 됨
-      // 앵커태그의 해시가 변경되었을때 이벤트가 발생한다.
-      // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
-      // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
-      const id = location.hash.substring(9);
-      const api = new NewsDetailApi();
-      const newsContent = api.getData(id); // api를 호출할때 id값이 필요해서 NewsFeedView와는 다르게 render에서 실행함.
-  
-      this.store.makeRead(Number(id));
-      this.setTemplateData("comments", this.makeComment(newsContent.comments));
-  
-      this.setTemplateData('current_page', String(this.store.currentPage));
-      this.setTemplateData('news_content_title', newsContent.title);
-      this.setTemplateData('news_content_content', newsContent.content);
-  
-      this.updateView();
+    render = async () : Promise<void> => {
+        // 해당 부분은 API가 호출 될때 결정되는 것들 이니까 render함수로 들어오게 됨
+        // 앵커태그의 해시가 변경되었을때 이벤트가 발생한다.
+        // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
+        // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
+        const id = location.hash.substring(9);
+        const api = new NewsDetailApi(CONTENT_URL.replace('@id', id));
+        
+        const { title, content, comments } = await api.getData();
+
+        this.store.makeRead(Number(id));
+        this.setTemplateData("comments", this.makeComment(comments));
+
+        this.setTemplateData('current_page', String(this.store.currentPage));
+        this.setTemplateData('news_content_title', title);
+        this.setTemplateData('news_content_content', content);
+
+        this.updateView();
+      
     }
   
     private makeComment = (comments : NewsDetailComment[]) : string => {  

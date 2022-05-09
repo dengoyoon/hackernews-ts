@@ -265,15 +265,6 @@ function () {
 }();
 
 exports.default = View;
-},{}],"src/config.ts":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.CONTENT_URL = exports.NEWS_URL = void 0;
-exports.NEWS_URL = 'https://api.hnpwa.com/v0/news/1.json';
-exports.CONTENT_URL = 'https://api.hnpwa.com/v0/item/@id.json';
 },{}],"src/core/api.ts":[function(require,module,exports) {
 "use strict";
 
@@ -305,24 +296,188 @@ var __extends = this && this.__extends || function () {
   };
 }();
 
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function (resolve) {
+      resolve(value);
+    });
+  }
+
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.NewsDetailApi = exports.NewsFeedApi = exports.Api = void 0;
 
-var config_1 = require("../config");
-
 var Api =
 /** @class */
 function () {
-  function Api() {}
+  function Api(url) {
+    this.xhr = new XMLHttpRequest();
+    this.url = url;
+  } // 콜백 헬을 해결할 fetch와 promise 방법
+  // async를 붙이면 리턴 값으로 Promise객체를 반환한다는 의미가 됨
+  // 마치 동기적으로 처리하는 것처럼 보이게 함
 
-  Api.prototype.getRequest = function (url) {
-    var ajax = new XMLHttpRequest();
-    ajax.open('GET', url, false);
-    ajax.send(); // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
 
-    return JSON.parse(ajax.response);
+  Api.prototype.request = function () {
+    return __awaiter(this, void 0, Promise, function () {
+      var response;
+      return __generator(this, function (_a) {
+        switch (_a.label) {
+          case 0:
+            return [4
+            /*yield*/
+            , fetch(this.url)];
+
+          case 1:
+            response = _a.sent();
+            return [4
+            /*yield*/
+            , response.json()];
+
+          case 2:
+            return [2
+            /*return*/
+            , _a.sent()];
+        }
+      });
+    });
   };
 
   return Api;
@@ -340,13 +495,19 @@ function (_super) {
   }
 
   NewsFeedApi.prototype.getData = function () {
-    return this.getRequest(config_1.NEWS_URL);
+    return __awaiter(this, void 0, Promise, function () {
+      return __generator(this, function (_a) {
+        return [2
+        /*return*/
+        , this.request()];
+      });
+    });
   };
 
   return NewsFeedApi;
 }(Api);
 
-exports.NewsFeedApi = NewsFeedApi; // 믹스인 방법
+exports.NewsFeedApi = NewsFeedApi;
 
 var NewsDetailApi =
 /** @class */
@@ -357,8 +518,14 @@ function (_super) {
     return _super !== null && _super.apply(this, arguments) || this;
   }
 
-  NewsDetailApi.prototype.getData = function (id) {
-    return this.getRequest(config_1.CONTENT_URL.replace('@id', id));
+  NewsDetailApi.prototype.getData = function () {
+    return __awaiter(this, void 0, Promise, function () {
+      return __generator(this, function (_a) {
+        return [2
+        /*return*/
+        , this.request()];
+      });
+    });
   };
 
   return NewsDetailApi;
@@ -379,7 +546,16 @@ exports.NewsDetailApi = NewsDetailApi; // // 믹스인
 // interface NewsDetailApi extends Api {};
 // applyApiMixins(NewsFeedApi, [Api]);
 // applyApiMixins(NewsDetailApi, [Api]);
-},{"../config":"src/config.ts"}],"src/page/news-detail-view.ts":[function(require,module,exports) {
+},{}],"src/config.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.CONTENT_URL = exports.NEWS_URL = void 0;
+exports.NEWS_URL = 'https://api.hnpwa.com/v0/news/1.json';
+exports.CONTENT_URL = 'https://api.hnpwa.com/v0/item/@id.json';
+},{}],"src/page/news-detail-view.ts":[function(require,module,exports) {
 "use strict";
 
 var __extends = this && this.__extends || function () {
@@ -410,6 +586,149 @@ var __extends = this && this.__extends || function () {
   };
 }();
 
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function (resolve) {
+      resolve(value);
+    });
+  }
+
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
 var __importDefault = this && this.__importDefault || function (mod) {
   return mod && mod.__esModule ? mod : {
     "default": mod
@@ -424,6 +743,8 @@ var view_1 = __importDefault(require("../core/view"));
 
 var api_1 = require("../core/api");
 
+var config_1 = require("../config");
+
 var template = "\n    <div class=\"bg-gray-600 min-h-screen pb-8\">\n        <div class=\"bg-white text-xl\">\n            <div class=\"mx-auto px-4\">\n            <div class=\"flex justify-between items-center py-6\">\n                <div class=\"flex justify-start\">\n                <h1 class=\"font-extrabold\">Hacker News</h1>\n                </div>\n                <div class=\"items-center justify-end\">\n                <a href=\"#/page/@current_page\" class=\"text-gray-500\">\n                    <i class=\"fa fa-times\"></i>\n                </a>\n                </div>\n            </div>\n            </div>\n        </div>\n\n        <div class=\"h-full border rounded-xl bg-white m-6 p-4 \">\n            <h2>@news_content_title</h2>\n            <div class=\"text-gray-400 h-20\">\n            @news_content_content\n            </div>\n            @comments\n        </div>\n    </div>\n    ";
 
 var NewsDetailView =
@@ -436,25 +757,32 @@ function (_super) {
 
 
     _this.render = function () {
-      // 해당 부분은 API가 호출 될때 결정되는 것들 이니까 render함수로 들어오게 됨
-      // 앵커태그의 해시가 변경되었을때 이벤트가 발생한다.
-      // 해시를 CONTENT_URL의 id란에 넣고 API를 호출해야함
-      // 해시를 주소에서 가져와야 하는데 주소 맨끝에 해시가 붙어있으니까 코드는 다음과 같다
-      var id = location.hash.substring(9);
-      var api = new api_1.NewsDetailApi();
-      var newsContent = api.getData(id); // api를 호출할때 id값이 필요해서 NewsFeedView와는 다르게 render에서 실행함.
+      return __awaiter(_this, void 0, Promise, function () {
+        var id, api, _a, title, content, comments;
 
-      _this.store.makeRead(Number(id));
+        return __generator(this, function (_b) {
+          switch (_b.label) {
+            case 0:
+              id = location.hash.substring(9);
+              api = new api_1.NewsDetailApi(config_1.CONTENT_URL.replace('@id', id));
+              return [4
+              /*yield*/
+              , api.getData()];
 
-      _this.setTemplateData("comments", _this.makeComment(newsContent.comments));
-
-      _this.setTemplateData('current_page', String(_this.store.currentPage));
-
-      _this.setTemplateData('news_content_title', newsContent.title);
-
-      _this.setTemplateData('news_content_content', newsContent.content);
-
-      _this.updateView();
+            case 1:
+              _a = _b.sent(), title = _a.title, content = _a.content, comments = _a.comments;
+              this.store.makeRead(Number(id));
+              this.setTemplateData("comments", this.makeComment(comments));
+              this.setTemplateData('current_page', String(this.store.currentPage));
+              this.setTemplateData('news_content_title', title);
+              this.setTemplateData('news_content_content', content);
+              this.updateView();
+              return [2
+              /*return*/
+              ];
+          }
+        });
+      });
     };
 
     _this.makeComment = function (comments) {
@@ -479,7 +807,7 @@ function (_super) {
 }(view_1.default);
 
 exports.default = NewsDetailView;
-},{"../core/view":"src/core/view.ts","../core/api":"src/core/api.ts"}],"src/page/news-feed-view.ts":[function(require,module,exports) {
+},{"../core/view":"src/core/view.ts","../core/api":"src/core/api.ts","../config":"src/config.ts"}],"src/page/news-feed-view.ts":[function(require,module,exports) {
 "use strict";
 
 var __extends = this && this.__extends || function () {
@@ -510,6 +838,149 @@ var __extends = this && this.__extends || function () {
   };
 }();
 
+var __awaiter = this && this.__awaiter || function (thisArg, _arguments, P, generator) {
+  function adopt(value) {
+    return value instanceof P ? value : new P(function (resolve) {
+      resolve(value);
+    });
+  }
+
+  return new (P || (P = Promise))(function (resolve, reject) {
+    function fulfilled(value) {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function rejected(value) {
+      try {
+        step(generator["throw"](value));
+      } catch (e) {
+        reject(e);
+      }
+    }
+
+    function step(result) {
+      result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+    }
+
+    step((generator = generator.apply(thisArg, _arguments || [])).next());
+  });
+};
+
+var __generator = this && this.__generator || function (thisArg, body) {
+  var _ = {
+    label: 0,
+    sent: function sent() {
+      if (t[0] & 1) throw t[1];
+      return t[1];
+    },
+    trys: [],
+    ops: []
+  },
+      f,
+      y,
+      t,
+      g;
+  return g = {
+    next: verb(0),
+    "throw": verb(1),
+    "return": verb(2)
+  }, typeof Symbol === "function" && (g[Symbol.iterator] = function () {
+    return this;
+  }), g;
+
+  function verb(n) {
+    return function (v) {
+      return step([n, v]);
+    };
+  }
+
+  function step(op) {
+    if (f) throw new TypeError("Generator is already executing.");
+
+    while (_) {
+      try {
+        if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+        if (y = 0, t) op = [op[0] & 2, t.value];
+
+        switch (op[0]) {
+          case 0:
+          case 1:
+            t = op;
+            break;
+
+          case 4:
+            _.label++;
+            return {
+              value: op[1],
+              done: false
+            };
+
+          case 5:
+            _.label++;
+            y = op[1];
+            op = [0];
+            continue;
+
+          case 7:
+            op = _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+
+          default:
+            if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) {
+              _ = 0;
+              continue;
+            }
+
+            if (op[0] === 3 && (!t || op[1] > t[0] && op[1] < t[3])) {
+              _.label = op[1];
+              break;
+            }
+
+            if (op[0] === 6 && _.label < t[1]) {
+              _.label = t[1];
+              t = op;
+              break;
+            }
+
+            if (t && _.label < t[2]) {
+              _.label = t[2];
+
+              _.ops.push(op);
+
+              break;
+            }
+
+            if (t[2]) _.ops.pop();
+
+            _.trys.pop();
+
+            continue;
+        }
+
+        op = body.call(thisArg, _);
+      } catch (e) {
+        op = [6, e];
+        y = 0;
+      } finally {
+        f = t = 0;
+      }
+    }
+
+    if (op[0] & 5) throw op[1];
+    return {
+      value: op[0] ? op[1] : void 0,
+      done: true
+    };
+  }
+};
+
 var __importDefault = this && this.__importDefault || function (mod) {
   return mod && mod.__esModule ? mod : {
     "default": mod
@@ -524,6 +995,8 @@ var view_1 = __importDefault(require("../core/view"));
 
 var api_1 = require("../core/api");
 
+var config_1 = require("../config");
+
 var NewsFeedView =
 /** @class */
 function (_super) {
@@ -537,39 +1010,48 @@ function (_super) {
     // override render
 
     _this.render = function () {
-      _this.store.currentPage = Number(location.hash.substring(7) || 1); // default 처리
+      return __awaiter(_this, void 0, Promise, function () {
+        var _a, _b, i, _c, id, title, comments_count, user, points, time_ago, read;
 
-      for (var i = (_this.store.currentPage - 1) * 10; i < _this.store.currentPage * 10; i++) {
-        // 구조 분해 할당 방법
-        var _a = _this.store.getFeed(i),
-            id = _a.id,
-            title = _a.title,
-            comments_count = _a.comments_count,
-            user = _a.user,
-            points = _a.points,
-            time_ago = _a.time_ago,
-            read = _a.read;
+        return __generator(this, function (_d) {
+          switch (_d.label) {
+            case 0:
+              this.store.currentPage = Number(location.hash.substring(7) || 1); // default 처리
 
-        _this.addHtml("\n            <div class=\"p-6 ".concat(read ? 'bg-green-600' : 'bg-white', " mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100\">\n            <div class=\"flex\">\n                <div class=\"flex-auto\">\n                <a href=\"#/detail/").concat(id, "\">").concat(title, "</a>  \n                </div>\n                <div class=\"text-center text-sm\">\n                <div class=\"w-10 text-white bg-green-300 rounded-lg px-0 py-2\">").concat(comments_count, "</div>\n                </div>\n            </div>\n            <div class=\"flex mt-3\">\n                <div class=\"grid grid-cols-3 text-sm text-gray-500\">\n                <div><i class=\"fas fa-user mr-1\"></i>").concat(user, "</div>\n                <div><i class=\"fas fa-heart mr-1\"></i>").concat(points, "</div>\n                <div><i class=\"far fa-clock mr-1\"></i>").concat(time_ago, "</div>\n                </div>  \n            </div>\n            </div>    \n        "));
-      }
+              if (!!this.store.hasFeeds) return [3
+              /*break*/
+              , 2];
+              _b = (_a = this.store).setFeeds;
+              return [4
+              /*yield*/
+              , this.api.getData()];
 
-      _this.setTemplateData("news_list", _this.getHtml()); // 템플릿의 앵커 태그 안의 값들이 변경되면서 해당 버튼을 클릭했을때 hash 변경이 감지될 것.
+            case 1:
+              _b.apply(_a, [_d.sent()]);
 
+              _d.label = 2;
 
-      _this.setTemplateData("prev_page", String(_this.store.prevPage));
+            case 2:
+              for (i = (this.store.currentPage - 1) * 10; i < this.store.currentPage * 10; i++) {
+                _c = this.store.getFeed(i), id = _c.id, title = _c.title, comments_count = _c.comments_count, user = _c.user, points = _c.points, time_ago = _c.time_ago, read = _c.read;
+                this.addHtml("\n            <div class=\"p-6 ".concat(read ? 'bg-green-600' : 'bg-white', " mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100\">\n            <div class=\"flex\">\n                <div class=\"flex-auto\">\n                <a href=\"#/detail/").concat(id, "\">").concat(title, "</a>  \n                </div>\n                <div class=\"text-center text-sm\">\n                <div class=\"w-10 text-white bg-green-300 rounded-lg px-0 py-2\">").concat(comments_count, "</div>\n                </div>\n            </div>\n            <div class=\"flex mt-3\">\n                <div class=\"grid grid-cols-3 text-sm text-gray-500\">\n                <div><i class=\"fas fa-user mr-1\"></i>").concat(user, "</div>\n                <div><i class=\"fas fa-heart mr-1\"></i>").concat(points, "</div>\n                <div><i class=\"far fa-clock mr-1\"></i>").concat(time_ago, "</div>\n                </div>  \n            </div>\n            </div>    \n        "));
+              }
 
-      _this.setTemplateData("next_page", String(_this.store.nextPage));
+              this.setTemplateData("news_list", this.getHtml()); // 템플릿의 앵커 태그 안의 값들이 변경되면서 해당 버튼을 클릭했을때 hash 변경이 감지될 것.
 
-      _this.updateView();
+              this.setTemplateData("prev_page", String(this.store.prevPage));
+              this.setTemplateData("next_page", String(this.store.nextPage));
+              this.updateView();
+              return [2
+              /*return*/
+              ];
+          }
+        });
+      });
     };
 
     _this.store = store;
-    _this.api = new api_1.NewsFeedApi();
-
-    if (!_this.store.hasFeeds) {
-      _this.store.setFeeds(_this.api.getData());
-    }
-
+    _this.api = new api_1.NewsFeedApi(config_1.NEWS_URL);
     return _this;
   }
 
@@ -577,7 +1059,7 @@ function (_super) {
 }(view_1.default);
 
 exports.default = NewsFeedView;
-},{"../core/view":"src/core/view.ts","../core/api":"src/core/api.ts"}],"src/page/index.ts":[function(require,module,exports) {
+},{"../core/view":"src/core/view.ts","../core/api":"src/core/api.ts","../config":"src/config.ts"}],"src/page/index.ts":[function(require,module,exports) {
 "use strict";
 
 var __importDefault = this && this.__importDefault || function (mod) {
@@ -778,7 +1260,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59290" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "59602" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

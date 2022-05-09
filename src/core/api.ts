@@ -2,26 +2,32 @@ import { NewsDetail, NewsFeed } from "../types";
 import { NEWS_URL, CONTENT_URL } from "../config";
 
 export class Api {
-    protected getRequest<AjaxResponseType>(url : string) : AjaxResponseType {
-        const ajax = new XMLHttpRequest();
-        ajax.open('GET', url, false);
-        ajax.send();
+    xhr : XMLHttpRequest;
+    url : string;
 
-        // 경우에 따라서 반환하는 값이 NewsFeed[]일때도, NewsDetail일때도 있는 상황
-        return JSON.parse(ajax.response);
+    constructor(url : string) {
+        this.xhr = new XMLHttpRequest();
+        this.url = url;
+    }
+
+    // 콜백 헬을 해결할 fetch와 promise 방법
+    // async를 붙이면 리턴 값으로 Promise객체를 반환한다는 의미가 됨
+    // 마치 동기적으로 처리하는 것처럼 보이게 함
+    protected async request<AjaxResponseType>() : Promise<AjaxResponseType> {
+        const response = await fetch(this.url)
+        return await response.json() as AjaxResponseType;
     }
 }
 
 export class NewsFeedApi extends Api {
-    getData() : NewsFeed[] {
-        return this.getRequest<NewsFeed[]>(NEWS_URL);
+    async getData() : Promise<NewsFeed[]> {
+        return this.request<NewsFeed[]>();
     }
 }
 
-// 믹스인 방법
 export class NewsDetailApi extends Api {
-    getData(id : string) : NewsDetail {
-        return this.getRequest<NewsDetail>(CONTENT_URL.replace('@id', id));
+    async getData() : Promise<NewsDetail> {
+        return this.request<NewsDetail>();
     }
 }
 
